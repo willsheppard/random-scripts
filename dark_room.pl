@@ -30,9 +30,8 @@ use strict;
 use warnings;
 
 use Data::Dumper;
-#use Game::Idle::DarkRoom;
 
-die "usage: $0 amount time amount time amount time\n"
+die "usage: $0 [product] [amount] [time] [[amount] [time]] [...]\n"
     unless scalar @ARGV;
 
 my $dark = Game::Idle::DarkRoom->new(@ARGV);
@@ -100,6 +99,8 @@ sub calculate {
         $message = "you will lose"
     } else {
         $message = "you will break even";
+        print "$message with 0 " . $self->{product} . "\n";
+        return;
     }
 
 #    print "$message $total_amount"
@@ -108,11 +109,11 @@ sub calculate {
     # reduce numbers
     my $reduced_amount = 1;
     my $reduced_time = $long_time / $total_amount;
+    $reduced_time *= -1 if $reduced_time < 0;
 
-#    print "reduced to...\n";
     printf("$message $reduced_amount "
         . $self->{product}
-        . " over %d seconds\n", $reduced_time);
+        . " in %d seconds\n", $reduced_time);
 }
 
 1;
