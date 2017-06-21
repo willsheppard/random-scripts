@@ -45,8 +45,11 @@ exit;
 
 package Game::Idle::DarkRoom;
 
+use constant DATA_FILE => "dark_room.dat";
+
 sub new {
     my ($class, @args) = @_;
+    my @orig_args = @args;
 
     # optionally fetch product name from first argument
     my $product = shift @args if $args[0] =~ m/[^\d\.\-]/;
@@ -62,6 +65,7 @@ sub new {
     $self->{input} = $input;
     $self->{batch} = $batch;
     $self->{product} = $product // "";
+    $self->{args} = \@orig_args;
     return $self;
 }
 
@@ -83,33 +87,34 @@ sub preprocess {
 sub calculate {
     my ($self) = @_;
 
+    # log input arguments
+    $self->log_input_args;
+
     # calculate gain or loss
-    my ($amount, $time) = $self->delta;
+    my ($delta, $amount, $time) = $self->delta;
 
     # prepare output
     my $message;
-    if ($amount > 0) {
+    if ($delta > 0) {
         $message = "you will gain";
-    } elsif ($amount < 0) {
+    } elsif ($delta < 0) {
         $message = "you will lose"
     } else {
         # stop here if breaking even
         $message = "you will break even";
-        print "$message with 0 " . $self->{product} . "\n";
+        $self->output_message("$message with 0 " . $self->{product});
         return;
     }
 
     # display gain or loss message
-    printf("$message $amount "
-        . $self->{product}
-        . " in %d seconds\n", $time);
+    $self->output_message( "$message $amount " . $self->{product} . " in $time seconds" );
 }
 
 sub delta {
     my ($self) = @_;
 
     # calculate overall gain or loss
-    my $total_amount = 0;
+    my $total_delta = 0;
     foreach my $item (@{ $self->{input} }) {
         my @other_times = map {
             $_->{time}
@@ -120,19 +125,46 @@ sub delta {
         foreach my $time (@other_times) {
             $total_other_time *= $time;
         }
-        $total_amount += $item->{amount} * $total_other_time;
+        $total_delta += $item->{amount} * $total_other_time;
     }
 
-    return ($total_amount, undef) if $total_amount == 0; # if breaking even, time is irrelevant
+    return ($total_delta, undef) if $total_delta == 0; # if breaking even, time is irrelevant
 
     # reduce numbers so they're easy to understand
     my $long_time = 1;
     $long_time *= $_ for map { $_->{time} } @{ $self->{input} };
-    my $reduced_time = $long_time / $total_amount;
+    my $reduced_time = $long_time / $total_delta;
     $reduced_time *= -1 if $reduced_time < 0; # time is always positive
 
+    if ($reduced_time != 0 && $reduced_time > -1 && $reduced_time < 1) {
+        # explain small values
+        $reduced_time = '< 1';
+    }
+    else {
+        # format as an integer
+        $reduced_time = sprintf("%d", $reduced_time);
+    }
+
     my $reduced_amount = 1; # this doesn't change
-    return ($reduced_amount, $reduced_time);
+    return ($total_delta, $reduced_amount, $reduced_time);
+}
+
+sub log_input_args {
+    my ($self) = @_;
+    $self->log_message("perl $0 ".join(" ", @{ $self->{args} })."\n");
+}
+
+sub output_message {
+    my ($self, $message) = @_;
+    print "$message\n";
+    $self->log_message("$message\n");
+}
+
+sub log_message {
+    my ($self, $message) = @_;
+    open(my $fh, '>>', &DATA_FILE) or die "Can't open ".&DATA_FILE.": $!";
+    print $fh $message;
+    close($fh) or die "Can't close ".&DATA_FILE.": $!";
 }
 
 1;
