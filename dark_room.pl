@@ -45,7 +45,7 @@ exit;
 
 package Game::Idle::DarkRoom;
 
-use constant DATA_FILE => "dark_room.dat";
+use constant DATA_FILE => "dark_room.data";
 
 sub new {
     my ($class, @args) = @_;
@@ -91,7 +91,19 @@ sub calculate {
     $self->log_input_args;
 
     # calculate gain or loss
+    # for batch of previous products
+
+    # calculate gain or loss
+    # for specified product
     my ($delta, $amount, $time) = $self->delta;
+
+    $self->display_output(
+        $delta, $amount, $time
+    );
+}
+
+sub display_output {
+    my ($self, $delta, $amount, $time) = @_;
 
     # prepare output
     my $message;
@@ -151,6 +163,7 @@ sub delta {
 
 sub log_input_args {
     my ($self) = @_;
+    $self->log_message("# ".`date`); # includes \n
     $self->log_message("perl $0 ".join(" ", @{ $self->{args} })."\n");
 }
 
