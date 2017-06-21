@@ -31,7 +31,9 @@ use warnings;
 
 use Data::Dumper;
 
-die "usage: $0 [product] [amount] [time] [[amount] [time]] [...]\n"
+my $batch; # default: off
+
+die "usage: $0 [product] [amount] [time] [[amount] [time]] [...] [batch]\n"
     unless scalar @ARGV;
 
 my $dark = Game::Idle::DarkRoom->new(@ARGV);
@@ -45,13 +47,20 @@ package Game::Idle::DarkRoom;
 
 sub new {
     my ($class, @args) = @_;
+
+    # optionally fetch product name from first argument
     my $product = shift @args if $args[0] =~ m/[^\d\.\-]/;
+
+    # optionally fetch "batch" flag from last argument
+    my $batch = pop @args if $args[-1] =~ m/[^\d\.\-]/;
+
     die "expected even number of arguments"
          unless (@args % 2) == 0;
     my $self = {};
     bless $self, $class;
     my $input = $self->preprocess( @args );
     $self->{input} = $input;
+    $self->{batch} = $batch;
     $self->{product} = $product // "";
     return $self;
 }
@@ -74,7 +83,32 @@ sub preprocess {
 sub calculate {
     my ($self) = @_;
 
-    # get overall gain/loss
+    # calculate gain or loss
+    my ($amount, $time) = $self->delta;
+
+    # prepare output
+    my $message;
+    if ($amount > 0) {
+        $message = "you will gain";
+    } elsif ($amount < 0) {
+        $message = "you will lose"
+    } else {
+        # stop here if breaking even
+        $message = "you will break even";
+        print "$message with 0 " . $self->{product} . "\n";
+        return;
+    }
+
+    # display gain or loss message
+    printf("$message $amount "
+        . $self->{product}
+        . " in %d seconds\n", $time);
+}
+
+sub delta {
+    my ($self) = @_;
+
+    # calculate overall gain or loss
     my $total_amount = 0;
     foreach my $item (@{ $self->{input} }) {
         my @other_times = map {
@@ -89,31 +123,16 @@ sub calculate {
         $total_amount += $item->{amount} * $total_other_time;
     }
 
+    return ($total_amount, undef) if $total_amount == 0; # if breaking even, time is irrelevant
+
+    # reduce numbers so they're easy to understand
     my $long_time = 1;
     $long_time *= $_ for map { $_->{time} } @{ $self->{input} };
-
-    my $message;
-    if ($total_amount > 0) {
-        $message = "you will gain";
-    } elsif ($total_amount < 0) {
-        $message = "you will lose"
-    } else {
-        $message = "you will break even";
-        print "$message with 0 " . $self->{product} . "\n";
-        return;
-    }
-
-#    print "$message $total_amount"
-#        . " over $long_time seconds\n";
-
-    # reduce numbers
-    my $reduced_amount = 1;
     my $reduced_time = $long_time / $total_amount;
-    $reduced_time *= -1 if $reduced_time < 0;
+    $reduced_time *= -1 if $reduced_time < 0; # time is always positive
 
-    printf("$message $reduced_amount "
-        . $self->{product}
-        . " in %d seconds\n", $reduced_time);
+    my $reduced_amount = 1; # this doesn't change
+    return ($reduced_amount, $reduced_time);
 }
 
 1;
