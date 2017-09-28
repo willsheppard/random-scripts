@@ -35,4 +35,29 @@ is_deeply($player1->hand, [ $card2 ], 'Hand contains card');
 for my $i (1..4) { $player1->add_to_hand( 'fake_card' ) }
 throws_ok( sub { $player1->add_to_hand( 'one_card_too_many' ) }, qr/already full/, "Dies after maximum card limit" );
 
+# Winner
+
+my $player_a = Player->new(name => 'Bob');
+my $card_a = $game->deal;
+note sprintf("%s is dealt the %s of %s\n", $player_a->name, ucfirst($card_a->{name}), ucfirst($card_a->{suit}));
+$player_a->add_to_hand($card_a);
+
+my $player_b = Player->new(name => 'Mary');
+my $card_b = $game->deal;
+note sprintf("%s is dealt the %s of %s\n", $player_b->name, ucfirst($card_b->{name}), ucfirst($card_b->{suit}));
+$player_b->add_to_hand($card_b);
+
+my $winner = $game->who_wins($player_a, $player_b);
+
+if ($winner) {
+    ok($winner->name, 'A winner was chosen: '.$winner->name);
+    note("The winning hand was:");
+    foreach my $card (@{ $winner->hand }) {
+        note sprintf("The %s of %s\n", ucfirst($card->{name}), ucfirst($card->{suit}));
+    }
+}
+else {
+    note("The game was a draw");
+}
+
 done_testing;

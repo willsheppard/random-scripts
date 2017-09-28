@@ -55,4 +55,19 @@ sub deal {
     return pop( @{ $self->deck } );
 }
 
+sub who_wins {
+    my ($self, $player1, $player2) = @_;
+    my $hand_1_value = 0;
+    foreach my $card (@{ $player1->hand }) {
+        $hand_1_value += $card->{value};
+    }
+    my $hand_2_value = 0;
+    foreach my $card (@{ $player2->hand }) {
+        $hand_2_value += $card->{value};
+    }
+    return $player1 if $hand_1_value > $hand_2_value;
+    return $player2 if $hand_2_value > $hand_1_value;
+    return undef; # it's a draw
+}
+
 1;
